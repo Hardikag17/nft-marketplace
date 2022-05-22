@@ -7,8 +7,8 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract NFTMarket is ReentrancyGuard {
     using Counters for Counters.Counter;
-    Counters.Counter private _itemIds;
-    Counters.Counter private _itemsSold;
+    Counters.Counter private _nftIds;
+    Counters.Counter private _nftsSold;
 
     address payable owner;
     uint256 listingPrice = 0.025 ether;
@@ -17,8 +17,8 @@ contract NFTMarket is ReentrancyGuard {
         owner = payable(msg.sender);
     }
 
-    struct MarketItem {
-        uint itemId;
+    struct NftItem {
+        uint256 itemId;
         address nftContract;
         uint256 tokenId;
         address payable seller;
@@ -27,10 +27,10 @@ contract NFTMarket is ReentrancyGuard {
         bool sold;
     }
 
-    mapping(uint256 => MarketItem) private idToMarketItem;
+    mapping(uint256 => NftItem) private idToNftItem;
 
-    event MarketItemCreated (
-        uint indexed itemId,
+    event NftCreated(
+        uint256 indexed itemId,
         address indexed nftContract,
         uint256 indexed tokenId,
         address seller,
@@ -39,18 +39,27 @@ contract NFTMarket is ReentrancyGuard {
         bool sold
     );
 
+    // get listing price
     function getListingPrice() public view returns (uint256) {
         return listingPrice;
     }
 
-    function createMarketItem(address nftContract, uint256 tokenId, uint256 price) public payable nonReentrant {
+    // create new NFT
+    function createNftItem(
+        address nftContract,
+        uint256 tokenId,
+        uint256 price
+    ) public payable nonReentrant {
         require(price > 0, "Price must be at least 1 wei");
-        require(msg.value == listingPrice, "Price must be equal to listing price");
+        require(
+            msg.value == listingPrice,
+            "Price must be equal to listing price"
+        );
 
-        _itemIds.increment();
-        uint256 itemId = _itemIds.current();
+        _nftIds.increment();
+        uint256 itemId = _nftIds.current();
 
-        idToMarketItem[itemId] = MarketItem(
+        idToNftItem[itemId] = NftItem(
             itemId,
             nftContract,
             tokenId,
@@ -62,7 +71,7 @@ contract NFTMarket is ReentrancyGuard {
 
         IERC721(nftContract).transferFrom(msg.sender, address(this), tokenId);
 
-        emit MarketItemCreated(
+        emit NftCreated(
             itemId,
             nftContract,
             tokenId,
@@ -73,29 +82,38 @@ contract NFTMarket is ReentrancyGuard {
         );
     }
 
-    function createMarketSale(address nftContract, uint256 itemId) public payable nonReentrant {
-        uint price = idToMarketItem[itemId].price;
-        uint tokenId = idToMarketItem[itemId].tokenId;
-        require(msg.value == price, "Please submit the asking price in order to complete the purchase");
-        
-        idToMarketItem[itemId].seller.transfer(msg.value);
-        IERC721(nftContract). transferFrom(address(this), msg.sender, tokenId);
-        idToMarketItem[itemId].owner = payable(msg.sender);
-        idToMarketItem[itemId].sold = true;
-        _itemsSold.increment();
+    // sell owned NFT
+    function sellItem(address nftContract, uint256 itemId)
+        public
+        payable
+        nonReentrant
+    {
+        uint256 price = idToNftItem[itemId].price;
+        uint256 tokenId = idToNftItem[itemId].tokenId;
+        require(
+            msg.value == price,
+            "Please submit the asking price in order to complete the purchase"
+        );
+
+        idToNftItem[itemId].seller.transfer(msg.value);
+        IERC721(nftContract).transferFrom(address(this), msg.sender, tokenId);
+        idToNftItem[itemId].owner = payable(msg.sender);
+        idToNftItem[itemId].sold = true;
+        _nftsSold.increment();
         payable(owner).transfer(listingPrice);
     }
 
-    function fetchMarketItems() public view returns (MarketItem[] memory) {
-        uint itemCount = _itemIds.current();
-        uint unsoldItemCount = _itemIds.current() - _itemsSold.current();
-        uint currentIndex = 0;
+    // get all NFTs for sale
+    function fetchNftItems() public view returns (NftItem[] memory) {
+        uint256 itemCount = _nftIds.current();
+        uint256 unsoldItemCount = _nftIds.current() - _nftsSold.current();
+        uint256 currentIndex = 0;
 
-        MarketItem[] memory items = new MarketItem[](unsoldItemCount);
-        for(uint i = 0; i < itemCount; i++) {
-            if(idToMarketItem[i + 1].owner == address(0)) {
-                uint currentId = idToMarketItem[i + 1].itemId;
-                MarketItem storage currentItem = idToMarketItem[currentId];
+        NftItem[] memory items = new NftItem[](unsoldItemCount);
+        for (uint256 i = 0; i < itemCount; i++) {
+            if (idToNftItem[i + 1].owner == address(0)) {
+                uint256 currentId = idToNftItem[i + 1].itemId;
+                NftItem storage currentItem = idToNftItem[currentId];
                 items[currentIndex] = currentItem;
                 currentIndex += 1;
             }
@@ -103,22 +121,23 @@ contract NFTMarket is ReentrancyGuard {
         return items;
     }
 
-    function fetchMyNFTs() public view returns (MarketItem[] memory) {
-        uint totalItemCount = _itemIds.current();
-        uint itemCount = 0;
-        uint currentIndex = 0;
+    // get NFTs owned by user
+    function fetchMyNFTs() public view returns (NftItem[] memory) {
+        uint256 totalItemCount = _nftIds.current();
+        uint256 itemCount = 0;
+        uint256 currentIndex = 0;
 
-        for(uint i = 0; i < totalItemCount; i++) {
-            if(idToMarketItem[i + 1].owner == msg.sender) {
+        for (uint256 i = 0; i < totalItemCount; i++) {
+            if (idToNftItem[i + 1].owner == msg.sender) {
                 itemCount += 1;
             }
         }
 
-        MarketItem[] memory items = new MarketItem[](itemCount);
-        for(uint i = 0; i < totalItemCount; i++) {
-            if(idToMarketItem[i + 1].owner == msg.sender) {
-                uint currentId = idToMarketItem[i + 1].itemId;
-                MarketItem storage currentItem = idToMarketItem[currentId];
+        NftItem[] memory items = new NftItem[](itemCount);
+        for (uint256 i = 0; i < totalItemCount; i++) {
+            if (idToNftItem[i + 1].owner == msg.sender) {
+                uint256 currentId = idToNftItem[i + 1].itemId;
+                NftItem storage currentItem = idToNftItem[currentId];
                 items[currentIndex] = currentItem;
                 currentIndex += 1;
             }
@@ -126,28 +145,27 @@ contract NFTMarket is ReentrancyGuard {
         return items;
     }
 
-    function fetchItemsCreated() public view returns (MarketItem[] memory) {
-        uint totalItemCount = _itemIds.current();
-        uint itemCount = 0;
-        uint currentIndex = 0;
+    // get NFTs created by user
+    function fetchNftsCreated() public view returns (NftItem[] memory) {
+        uint256 totalItemCount = _nftIds.current();
+        uint256 itemCount = 0;
+        uint256 currentIndex = 0;
 
-        for(uint i = 0; i < totalItemCount; i++) {
-            if(idToMarketItem[i + 1].seller == msg.sender) {
+        for (uint256 i = 0; i < totalItemCount; i++) {
+            if (idToNftItem[i + 1].seller == msg.sender) {
                 itemCount += 1;
             }
         }
 
-        MarketItem[] memory items = new MarketItem[](itemCount);
-        for(uint i = 0; i < totalItemCount; i++) {
-            if(idToMarketItem[i + 1].seller == msg.sender) {
-                uint currentId = idToMarketItem[i + 1].itemId;
-                MarketItem storage currentItem = idToMarketItem[currentId];
+        NftItem[] memory items = new NftItem[](itemCount);
+        for (uint256 i = 0; i < totalItemCount; i++) {
+            if (idToNftItem[i + 1].seller == msg.sender) {
+                uint256 currentId = idToNftItem[i + 1].itemId;
+                NftItem storage currentItem = idToNftItem[currentId];
                 items[currentIndex] = currentItem;
                 currentIndex += 1;
             }
         }
         return items;
     }
-
-    
 }
