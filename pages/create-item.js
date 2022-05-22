@@ -1,22 +1,22 @@
-import { useState } from "react";
-import { ethers } from "ethers";
-import { create as ipfsHttpClient } from "ipfs-http-client";
-import { useRouter } from "next/router";
-import Web3Modal from "web3modal";
+import { useState } from 'react';
+import { ethers } from 'ethers';
+import { create as ipfsHttpClient } from 'ipfs-http-client';
+import { useRouter } from 'next/router';
+import Web3Modal from 'web3modal';
 
-const client = ipfsHttpClient("https://ipfs.infura.io:5001/api/v0");
+const client = ipfsHttpClient('https://ipfs.infura.io:5001/api/v0');
 
-import { nftaddress, nftmarketaddress } from "../config";
+import { nftaddress, nftmarketaddress } from '../config';
 
-import NFT from "../artifacts/contracts/NFT.sol/NFT.json";
-import Market from "../artifacts/contracts/NFTMarket.sol/NFTMarket.json";
+import NFT from '../artifacts/contracts/NFT.sol/NFT.json';
+import Market from '../artifacts/contracts/NFTMarket.sol/NFTMarket.json';
 
 export default function CreateItem() {
   const [fileUrl, setFileUrl] = useState(null);
   const [formInput, updateFormInput] = useState({
-    price: "",
-    name: "",
-    description: "",
+    price: '',
+    name: '',
+    description: '',
   });
   const router = useRouter();
 
@@ -34,7 +34,7 @@ export default function CreateItem() {
   }
 
   async function createItem() {
-    console.log("button clicked");
+    console.log('button clicked');
     const { name, description, price } = formInput;
     if (!name || !description || !price || !fileUrl) return;
     const data = JSON.stringify({
@@ -48,14 +48,14 @@ export default function CreateItem() {
       const url = `https://ipfs.infura.io/ipfs/${added.path}`;
       // after file is uploaded to IPFS, pass the URL to save it on Polygon
       createSale(url);
-      console.log("hello 2");
+      console.log('hello 2');
     } catch (error) {
-      console.log("Error uploading file: ", error);
+      console.log('Error uploading file: ', error);
     }
   }
 
   async function createSale(url) {
-    console.log("hello 3");
+    console.log('hello 3');
     const web3Modal = new Web3Modal();
     const connection = await web3Modal.connect();
     const provider = new ethers.providers.Web3Provider(connection);
@@ -69,49 +69,48 @@ export default function CreateItem() {
     let value = event.args[2];
     let tokenId = value.toNumber();
 
-    const price = ethers.utils.parseUnits(formInput.price, "ether");
+    const price = ethers.utils.parseUnits(formInput.price, 'ether');
 
     contract = new ethers.Contract(nftmarketaddress, Market.abi, signer);
     let listingPrice = await contract.getListingPrice();
     listingPrice = listingPrice.toString();
-    console.log("almost there");
+    console.log('almost there');
     transaction = await contract.createMarketItem(nftaddress, tokenId, price, {
       value: listingPrice,
     });
     await transaction.wait();
-    router.push("/");
+    router.push('/');
   }
 
   return (
-    <div className="flex justify-center">
-      <div className="w-1/2 flex flex-col pb-12">
+    <div className='flex justify-center'>
+      <div className='w-1/2 flex flex-col mt-12  border border-black-800 bg-white rounded-xl m-auto p-16'>
         <input
-          placeholder="Asset Name"
-          className="mt-8 border rounded p-4"
+          placeholder='Asset Name'
+          className='mt-8 border rounded p-4'
           onChange={(e) =>
             updateFormInput({ ...formInput, name: e.target.value })
           }
         />
         <textarea
-          placeholder="Asset Description"
-          className="mt-2 border rounded p-4"
+          placeholder='Asset Description'
+          className='mt-2 border rounded p-4'
           onChange={(e) =>
             updateFormInput({ ...formInput, description: e.target.value })
           }
         />
         <input
-          placeholder="Asset Price in Matic"
-          className="mt-2 border rounded p-4"
+          placeholder='Asset Price in Matic'
+          className='mt-2 border rounded p-4'
           onChange={(e) =>
             updateFormInput({ ...formInput, price: e.target.value })
           }
         />
-        <input type="file" name="Asset" className="my-4" onChange={onChange} />
-        {fileUrl && <img className="rounded mt-4" width="350" src={fileUrl} />}
+        <input type='file' name='Asset' className='my-4' onChange={onChange} />
+        {fileUrl && <img className='rounded mt-4' width='350' src={fileUrl} />}
         <button
           onClick={createItem}
-          className="font-bold mt-4 bg-pink-500 text-white rounded p-4 shadow-lg"
-        >
+          className='bg-pink-500 hover:brightness-125 border-lightblue hover:105 rounded-lg p-3 text-blue text-2xl text-center'>
           Create Digital Asset
         </button>
       </div>
