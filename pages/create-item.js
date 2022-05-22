@@ -21,12 +21,14 @@ export default function CreateItem() {
   const router = useRouter();
 
   async function onChange(e) {
+    console.log('running');
     const file = e.target.files[0];
     try {
       const added = await client.add(file, {
         progress: (prog) => console.log(`received: ${prog}`),
       });
       const url = `https://ipfs.infura.io/ipfs/${added.path}`;
+      console.log(url);
       setFileUrl(url);
     } catch (e) {
       console.log(e);
@@ -110,7 +112,7 @@ export default function CreateItem() {
         {fileUrl && <img className='rounded mt-4' width='350' src={fileUrl} />}
         <button
           onClick={createItem}
-          className='bg-pink-500 hover:brightness-125 border-lightblue hover:105 rounded-lg p-3 text-blue text-2xl text-center'>
+          className='bg-blue-500 hover:brightness-125 border-lightblue hover:105 rounded-lg p-3 text-blue text-2xl text-center'>
           Create Digital Asset
         </button>
       </div>
